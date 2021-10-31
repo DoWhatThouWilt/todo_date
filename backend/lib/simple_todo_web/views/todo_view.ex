@@ -11,8 +11,6 @@ defmodule SimpleTodoWeb.TodoView do
   end
 
   def render("todo.json", %{todo: todo}) do
-    %{id: todo.id,
-      title: todo.title,
-      done: todo.done}
+    %{id: todo.id, title: todo.title, done: todo.done, due: todo.due}
   end
 end

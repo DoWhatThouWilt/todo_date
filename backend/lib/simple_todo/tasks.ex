@@ -18,7 +18,7 @@ defmodule SimpleTodo.Tasks do
 
   """
   def list_todos do
-    Repo.all(from t in Todo, order_by: [asc: :id])
+    Repo.all(from t in Todo, order_by: [asc: :due])
   end
 
   @doc """

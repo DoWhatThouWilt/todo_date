@@ -1,28 +1,42 @@
 <script>
-  /*===== WHAT I'VE LEARNED =====
-	In order for the transitions to fire and properly animate, reactivity must be
-	triggered by the reassignment of local variables. Syncing the local list 
-	variable to the updated database does not trigger the animations. This means that the
-	database must be updated seperately from the local variables. The placement and order of
-	items that were modified by user actions are also required to be maintained for the sake of
-	providing a consistent UI expirience, which cannot be achieved by tying the local list to
-	the database. 
-	*/
-  import axios from "axios";
-  import { onMount } from "svelte";
-  import { slide } from "svelte/transition";
-  import { elasticInOut } from "svelte/easing";
-  const url = "http://localhost:4000/api/todos";
+  import { fly } from 'svelte/transition';
+  import { onMount } from 'svelte';
+  import { slide } from 'svelte/transition';
+  import { backInOut } from 'svelte/easing';
 
-  const ENTER_KEY = 13;
-  const ESCAPE_KEY = 27;
+  import axios from 'axios';
+  import { today, upcomingFilter, overdueFilter } from './date_utilities.js';
 
-  let currentFilter = "all";
+  import ProgressCircle from 'svelte-progresscircle';
+  import TodoItem from './components/TodoItem.svelte';
+
+  const url = 'https://serene-crag-60356.herokuapp.com/api/todos';
+
   let todos = [];
-  let input = "";
+  let input = '';
+  let date = today();
   let editing = null;
 
   onMount(() => getTodos());
+
+  let isHidden = true;
+  $: value = Math.trunc((numCompleted / todos.length) * 100);
+  let width;
+  $: sidebar = width >= 768;
+
+  let currentFilter = 'all';
+  $: filtered =
+    currentFilter === 'all'
+      ? todos
+      : currentFilter === 'overdue'
+      ? todos.filter(overdueFilter)
+      : currentFilter === 'upcoming'
+      ? todos.filter(upcomingFilter)
+      : todos.filter((todo) => todo.done); //else currentFilter === completed
+
+  $: numCompleted = todos.filter((item) => item.done).length;
+  $: numOverdue = todos.filter(overdueFilter).length;
+  $: numUpcoming = todos.filter(upcomingFilter).length;
 
   async function getTodos() {
     const { data: response } = await axios.get(url);
@@ -33,13 +47,17 @@
     const { data: response } = await axios.post(url, {
       todo: {
         title: input,
+        due: date,
       },
     });
     todos = [...todos, response.data];
-    input = "";
+    input = '';
+    date = today();
   }
 
-  async function removeTodo(id) {
+  async function handleDelete(event) {
+    const id = event.detail.id;
+    console.log(id);
     await axios.delete(`${url}/${id}`);
     const index = todos.findIndex((todo) => todo.id === id);
     todos.splice(index, 1);
@@ -52,161 +70,237 @@
         done: !todo.done,
       },
     });
-    // todos[index].done = !todo.done;
+    todos[index].done = !todo.done;
   }
 
-  function handleEdit(event) {
-    if (event.which === ENTER_KEY) event.target.blur();
-    else if (event.which === ESCAPE_KEY) editing = null;
-  }
-
-  async function submit(event, todo) {
-    await axios.put(`${url}/${todo.id}`, {
+  async function handleEdit(event) {
+    await axios.put(`${url}/${event.detail.id}`, {
       todo: {
-        title: event.target.value,
+        title: event.detail.title,
       },
     });
-    todos[editing].title = event.target.value;
-    editing = null;
   }
-
-  $: filtered =
-    currentFilter === "all"
-      ? todos
-      : currentFilter === "completed"
-      ? todos.filter((todo) => todo.done)
-      : todos.filter((todo) => !todo.done);
 </script>
 
-<style>
-  :global(body) {
-    background-color: hsl(0, 0%, 96%);
-    height: 100vh;
-  }
+<svelte:window bind:innerWidth={width} />
+<div class="flex flex-row flex-wrap relative">
+  <!-- MOBILE NAV -->
+  <div class="px-6 py-2 z-20 shadow-lg w-full md:hidden">
+    <button on:click={() => (isHidden = !isHidden)}>
+      <i class="fa fa-2x fa-bars text-gray-600" />
+    </button>
+  </div>
 
-  input[type="text"].input.editing {
-    padding-left: 0 !important;
-    margin-left: 1em !important;
-    border: 0;
-    width: 85%;
-  }
-
-  li span {
-    transition: color 0.4s;
-  }
-  li span.completed {
-    color: #d9d9d9;
-    text-decoration: line-through;
-  }
-</style>
-
-<svelte:head>
-  <link
-    rel="stylesheet"
-    type="text/css"
-    href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css" />
-  <script src="https://use.fontawesome.com/releases/v5.3.1/js/all.js">
-
-  </script>
-</svelte:head>
-
-<main class="container is-fluid">
-  <div class="columns is-centered is-vcentered is-mobile">
-    <div class="column is-three-quarters-tablet is-one-third-desktop">
-      <h1 class="has-text-centered title">Svelte TODO</h1>
-      <div class="tabs is-fullwidth">
-        <ul>
-          <!-- svelte-ignore a11y-missing-attribute -->
-          <li
-            class:is-active={currentFilter === 'all'}
-            on:click={() => {
-              currentFilter = 'all';
-            }}>
-            <a>All</a>
-          </li>
-          <!-- svelte-ignore a11y-missing-attribute -->
-          <li
-            class:is-active={currentFilter === 'active'}
-            on:click={() => {
-              currentFilter = 'active';
-            }}>
-            <a>Active</a>
-          </li>
-          <!-- svelte-ignore a11y-missing-attribute -->
-          <li
-            class:is-active={currentFilter === 'completed'}
-            on:click={() => {
-              currentFilter = 'completed';
-            }}>
-            <a>Completed</a>
-          </li>
-        </ul>
-      </div>
-      <form
-        class="field has-addons"
-        style="justify-content: center"
-        on:submit|preventDefault={addTodo}>
-        <div class="control is-expanded">
-          <input
-            bind:value={input}
-            type="text"
-            class="input is-medium"
-            placeholder="TODO" />
+  <!-- SIDEBAR -->
+  {#if !isHidden || sidebar}
+    <div
+      transition:fly|local={{ y: -300, duration: 300 }}
+      class="p-2 z-10 mt-10 bg-white shadow-2xl w-full md:block md:mt-0 md:w-84
+      fixed md:h-screen"
+    >
+      <!-- begin inner-column -->
+      <div class="flex flex-col bg-white">
+        <!-- Begin Avatar -->
+        <div class="p-4 w-full">
+          <div class="h-full flex items-center shadow p-2 rounded-lg">
+            <img
+              alt="team"
+              class="w-16 h-16 object-cover object-center flex-shrink-0
+              rounded-full mr-4"
+              src="https://randomuser.me/api/portraits/women/79.jpg"
+            />
+            <div class="flex-grow">
+              <h2 class="text-gray-700 font-bold text-lg">Hello, User! Yay!</h2>
+              <p class="text-gray-600">My Account | Log Out</p>
+            </div>
+          </div>
         </div>
-        <div class="control">
-          <button class="button is-primary is-medium">
-            <span class="icon is-primary">
-              <i class="fas fa-plus" />
-            </span>
+        <!-- End Avatar -->
+
+        <div class="p-4 w-full">
+          <div class="h-full text-center shadow rounded-lg p-2">
+            <h4 class="text-gray-700 font-medium">Date of Move</h4>
+            <h1 class="text-gray-700 font-extrabold text-4xl">9/20/20</h1>
+          </div>
+        </div>
+
+        <div class="p-4 w-full">
+          <div class="progress h-48 py-2 text-center shadow rounded-lg p2">
+            <ProgressCircle max="100" {value}>
+              <span class="leading-none">
+                <p class="text-gray-700 font-extrabold text-4xl">{value}%</p>
+                <p class="text-base text-gray-500">complete</p>
+              </span>
+            </ProgressCircle>
+          </div>
+        </div>
+
+        <div class="p-4 w-full">
+          <div
+            class="w-full h-full shadow-md rounded-lg text-gray-700 divide-y
+            divide-gray-300"
+          >
+            <div class="flex items-center justify-between h-12 px-2">
+              <p>Overdue Tasks</p>
+              <div
+                class="h-8 w-8 text-white font-bold bg-red-500 rounded-full flex
+                justify-center items-center"
+              >
+                {numOverdue}
+              </div>
+            </div>
+            <div class="flex items-center justify-between h-12 px-2">
+              <p>Due this Week</p>
+              <div
+                class="h-8 w-8 text-white font-bold bg-orange-500 rounded-full
+                flex justify-center items-center"
+              >
+                {numUpcoming}
+              </div>
+            </div>
+            <div class="flex items-center justify-between h-12 px-2">
+              <p>Completed Tasks</p>
+              <div
+                class="h-8 w-8 text-white font-bold bg-green-500 rounded-full
+                flex justify-center items-center"
+              >
+                {numCompleted}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <main class="w-full md:ml-84 p-6">
+    <div class="container mx-auto">
+      <div
+        class="text-3xl text-gray-700 font-medium leading-relaxed tracking-tight"
+      >
+        My Checklist
+      </div>
+
+      <!-- TABS SECTION -->
+      <nav class="flex flex-row">
+        <!-- svelte-ignore a11y-missing-attribute -->
+        <button
+          on:click={() => {
+            currentFilter = 'all';
+          }}
+          class:active={currentFilter === 'all'}
+          class="flex-grow text-gray-600 py-4 px-6 block hover:text-blue-500
+            focus:outline-none active"
+        >
+          All
+        </button>
+        <!-- svelte-ignore a11y-missing-attribute -->
+        <button
+          on:click={() => {
+            currentFilter = 'overdue';
+          }}
+          class:active={currentFilter === 'overdue'}
+          class="flex-grow text-gray-600 py-4 px-6 block hover:text-blue-500
+            focus:outline-none"
+        >
+          Overdue
+        </button>
+        <!-- svelte-ignore a11y-missing-attribute -->
+        <button
+          on:click={() => {
+            currentFilter = 'upcoming';
+          }}
+          class:active={currentFilter === 'upcoming'}
+          class="flex-grow text-gray-600 py-4 px-6 block hover:text-blue-500
+            focus:outline-none"
+        >
+          Upcoming
+        </button>
+        <!-- svelte-ignore a11y-missing-attribute -->
+        <button
+          on:click={() => {
+            currentFilter = 'completed';
+          }}
+          class:active={currentFilter === 'completed'}
+          class="flex-grow text-gray-600 py-4 px-6 block hover:text-blue-500
+            focus:outline-none"
+        >
+          Completed
+        </button>
+      </nav>
+
+      <!-- INPUT BAR -->
+      <form on:submit|preventDefault={addTodo}>
+        <div class="bg-white shadow-lg p-4 mt-2 flex rounded-lg">
+          <button class="flex items-center">
+            <i
+              class="fa fa-3x fa-plus-circle text-green-500 hover:text-green-300"
+            />
           </button>
+          <input
+            class="ml-3 w-full rounded p-2 text-lg"
+            type="text"
+            placeholder="What do you have to do?"
+            bind:value={input}
+          />
+          <input
+            class="text-orange-600 rounded-lg"
+            type="date"
+            bind:value={date}
+            min={today()}
+          />
         </div>
       </form>
-      <ul class:list={todos.length > 0}>
+
+      <ul class="flex flex-col bg-white py-4 mt-6">
         {#each filtered as todo, index (todo.id)}
-          <li
-            class="list-item"
-            transition:slide={{ duration: 300, easing: elasticInOut }}>
-            <div class="is-flex" style="align-items: center">
-
-              <label class="checkbox">
-                <input
-                  type="checkbox"
-                  bind:checked={todo.done}
-                  on:click={handleComplete(todo, index)} />
-              </label>
-              {#if editing === index}
-                <!-- svelte-ignore a11y-autofocus -->
-                <input
-                  type="text"
-                  value={todo.title}
-                  on:keydown={handleEdit}
-                  on:blur={(e) => {
-                    submit(e, todo);
-                  }}
-                  class="input editing"
-                  autofocus />
-              {:else}
-                <span
-                  class:completed={todo.done}
-                  style="margin-left: 1em"
-                  on:dblclick={() => (editing = index)}>
-                  {todo.title}
-                </span>
-              {/if}
-              <div style="flex: 1" />
-
-              <button
-                class="button is-text is-pulled-right"
-                on:click={removeTodo(todo.id)}>
-                <span class="icon has-text-grey-lighter">
-                  <i class="fas fa-lg fa-times" />
-                </span>
-              </button>
-            </div>
-          </li>
+          <div transition:slide={{ duration: 600, easing: backInOut }}>
+            <TodoItem
+              {...todo}
+              {index}
+              on:deleteTodo={handleDelete}
+              on:toggleTodoCompletion={handleComplete(todo, index)}
+              on:editTodo={handleEdit}
+            />
+          </div>
         {/each}
-
       </ul>
+
+      <!-- {#each $todos as todo}
+         <pre>{JSON.stringify(todo, null, 2)}</pre>
+      {/each} -->
     </div>
-  </div>
-</main>
+  </main>
+</div>
+
+<style>
+  input:focus {
+    outline: none !important;
+    border: 1px solid skyblue;
+    box-shadow: 0 0 5px #719ece;
+    opacity: 0.5;
+  }
+
+  [type='date'] {
+    width: 11em;
+    padding: 0;
+    margin: 0;
+  }
+
+  .progress {
+    --progress-color: #48bb78;
+    --progress-trackcolor: #cbdfe0;
+  }
+
+  span {
+    font-size: 1.25rem;
+    left: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .active {
+    @apply text-blue-500 border-b-2 font-medium border-blue-500;
+  }
+</style>
