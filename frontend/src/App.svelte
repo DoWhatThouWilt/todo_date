@@ -3,27 +3,20 @@
   import { onMount } from 'svelte';
   import { slide } from 'svelte/transition';
   import { backInOut } from 'svelte/easing';
-
   import axios from 'axios';
   import { today, upcomingFilter, overdueFilter } from './date_utilities.js';
-
   import ProgressCircle from 'svelte-progresscircle';
   import TodoItem from './components/TodoItem.svelte';
-
   const url = 'https://serene-crag-60356.herokuapp.com/api/todos';
-
   let todos = [];
   let input = '';
   let date = today();
   let editing = null;
-
   onMount(() => getTodos());
-
   let isHidden = true;
   $: value = Math.trunc((numCompleted / todos.length) * 100);
   let width;
   $: sidebar = width >= 768;
-
   let currentFilter = 'all';
   $: filtered =
     currentFilter === 'all'
@@ -33,10 +26,15 @@
       : currentFilter === 'upcoming'
       ? todos.filter(upcomingFilter)
       : todos.filter((todo) => todo.done); //else currentFilter === completed
-
   $: numCompleted = todos.filter((item) => item.done).length;
   $: numOverdue = todos.filter(overdueFilter).length;
   $: numUpcoming = todos.filter(upcomingFilter).length;
+
+  async function getResponse() {
+    const res = await axios.get(url);
+    return res;
+  }
+  let promise = getResponse();
 
   async function getTodos() {
     const { data: response } = await axios.get(url);
@@ -110,7 +108,7 @@
               src="https://randomuser.me/api/portraits/women/79.jpg"
             />
             <div class="flex-grow">
-              <h2 class="text-gray-700 font-bold text-lg">Hello, User! Yay!</h2>
+              <h2 class="text-gray-700 font-bold text-lg">Hello, User!</h2>
               <p class="text-gray-600">My Account | Log Out</p>
             </div>
           </div>
@@ -252,19 +250,23 @@
         </div>
       </form>
 
-      <ul class="flex flex-col bg-white py-4 mt-6">
-        {#each filtered as todo, index (todo.id)}
-          <div transition:slide={{ duration: 600, easing: backInOut }}>
-            <TodoItem
-              {...todo}
-              {index}
-              on:deleteTodo={handleDelete}
-              on:toggleTodoCompletion={handleComplete(todo, index)}
-              on:editTodo={handleEdit}
-            />
-          </div>
-        {/each}
-      </ul>
+      {#await promise}
+        <p>Waiting for server response....</p>
+      {:then value}
+        <ul class="flex flex-col bg-white py-4 mt-6">
+          {#each filtered as todo, index (todo.id)}
+            <div transition:slide={{ duration: 600, easing: backInOut }}>
+              <TodoItem
+                {...todo}
+                {index}
+                on:deleteTodo={handleDelete}
+                on:toggleTodoCompletion={handleComplete(todo, index)}
+                on:editTodo={handleEdit}
+              />
+            </div>
+          {/each}
+        </ul>
+      {/await}
 
       <!-- {#each $todos as todo}
          <pre>{JSON.stringify(todo, null, 2)}</pre>
@@ -280,18 +282,15 @@
     box-shadow: 0 0 5px #719ece;
     opacity: 0.5;
   }
-
   [type='date'] {
     width: 11em;
     padding: 0;
     margin: 0;
   }
-
   .progress {
     --progress-color: #48bb78;
     --progress-trackcolor: #cbdfe0;
   }
-
   span {
     font-size: 1.25rem;
     left: 50%;
@@ -299,7 +298,6 @@
     top: 50%;
     transform: translate(-50%, -50%);
   }
-
   .active {
     @apply text-blue-500 border-b-2 font-medium border-blue-500;
   }
