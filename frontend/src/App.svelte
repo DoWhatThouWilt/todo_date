@@ -7,7 +7,7 @@
   import { today, upcomingFilter, overdueFilter } from './date_utilities.js';
   import ProgressCircle from 'svelte-progresscircle';
   import TodoItem from './components/TodoItem.svelte';
-  const url = 'https://serene-crag-60356.herokuapp.com/api/todos';
+  const url = 'https://todo-backend.fly.dev/api/todos';
   let todos = [];
   let input = '';
   let date = today();
@@ -99,28 +99,28 @@
       <!-- begin inner-column -->
       <div class="flex flex-col bg-white">
         <!-- Begin Avatar -->
-        <div class="p-4 w-full">
-          <div class="h-full flex items-center shadow p-2 rounded-lg">
-            <img
-              alt="team"
-              class="w-16 h-16 object-cover object-center flex-shrink-0
-              rounded-full mr-4"
-              src="https://randomuser.me/api/portraits/women/79.jpg"
-            />
-            <div class="flex-grow">
-              <h2 class="text-gray-700 font-bold text-lg">Hello, User!</h2>
-              <p class="text-gray-600">My Account | Log Out</p>
-            </div>
-          </div>
-        </div>
+        <!-- <div class="p-4 w-full"> -->
+        <!--   <div class="h-full flex items-center shadow p-2 rounded-lg"> -->
+        <!--     <img -->
+        <!--       alt="team" -->
+        <!--       class="w-16 h-16 object-cover object-center flex-shrink-0 -->
+        <!--       rounded-full mr-4" -->
+        <!--       src="https://randomuser.me/api/portraits/women/79.jpg" -->
+        <!--     /> -->
+        <!--     <div class="flex-grow"> -->
+        <!--       <h2 class="text-gray-700 font-bold text-lg">Hello, User!</h2> -->
+        <!--       <p class="text-gray-600">My Account | Log Out</p> -->
+        <!--     </div> -->
+        <!--   </div> -->
+        <!-- </div> -->
         <!-- End Avatar -->
 
-        <div class="p-4 w-full">
-          <div class="h-full text-center shadow rounded-lg p-2">
-            <h4 class="text-gray-700 font-medium">Date of Move</h4>
-            <h1 class="text-gray-700 font-extrabold text-4xl">9/20/20</h1>
-          </div>
-        </div>
+        <!-- <div class="p-4 w-full"> -->
+        <!--   <div class="h-full text-center shadow rounded-lg p-2"> -->
+        <!--     <h4 class="text-gray-700 font-medium">Date of Move</h4> -->
+        <!--     <h1 class="text-gray-700 font-extrabold text-4xl">9/20/20</h1> -->
+        <!--   </div> -->
+        <!-- </div> -->
 
         <div class="p-4 w-full">
           <div class="progress h-48 py-2 text-center shadow rounded-lg p2">
